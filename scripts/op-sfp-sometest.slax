@@ -2,12 +2,14 @@
  * Filename      : op-sfp-data.slax
  * Author        : Andrew Sharp asharp@juniper.net
  * Platform      : MX TRIO
- * Release       : Junos 13.1X49+
+ * Release       : Junos 14.1+
  * Version       : 1.0
  * 
  * Description   : Op-script to write SFP Data to XML file
  *
  */
+ 
+ /* test comment entry */
 
 version 1.1;
 
