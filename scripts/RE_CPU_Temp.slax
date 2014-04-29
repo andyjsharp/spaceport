@@ -1,0 +1,135 @@
+version 1.1;
+
+/* Namespace declarations */
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+
+/* Junos Space specific context, name and description */
+/* @CONTEXT = "/device" */
+/* @NAME = "RouteEngine CPU and Temp" */
+/* @DESCRIPTION = "RE Bar chart example" */
+/* @ISLOCAL = "true" */
+/* @PROMOTE = "yes" */
+
+match / {
+    <op-script-results> {
+        var $local = jcs:open();
+        var $rpc = <get-route-engine-information>;
+        var $results = jcs:execute( $local , $rpc );
+        var $numRE = count($results/route-engine);
+        var $device = jcs:regex( 'name="([^"]+)' , $CONTEXT )[2];
+        /* header for data */
+        var $dataName = {
+            for-each ($results/route-engine) {
+                if ($results/route-engine/slot) {
+                    uexpr '"re' _ slot _ ' Temp", ' _ '"re' _ slot _ ' CPU"';
+                }
+                else {
+                    uexpr '"re Temp", ' _ '"re CPU"';
+                }
+                /* seperate with a comma except last */
+                if ( position() != last() ) {
+                    uexpr ', ';
+                }
+            }
+        }
+
+        /* data values */
+        var $dataValue = {
+            for-each ($results/route-engine) {
+                if ($results/route-engine/slot) {
+                    uexpr temperature/@junos:celsius _ ', ' _ cpu-temperature/@junos:celsius;
+                }
+                else {
+                    uexpr temperature/@junos:celsius _ ', ' _ cpu-temperature/@junos:celsius;
+                }
+                /* seperate with a comma except last */
+                if ( position() != last() ) {
+                    uexpr ', ';
+                }
+            }
+        }
+
+        var $javascript = <script type="text/javascript"> {
+                uexpr "var can, ctx,
+                    minVal, maxVal,
+                    xScalar, yScalar,
+                    numSamples, y;";
+                uexpr "var dataName = [ " _ $dataName _ " ];";
+                uexpr "var dataValue = [ " _ $dataValue _ " ];";
+                uexpr "
+                function init() {
+                    numSamples = ";
+                uexpr $numRE * 2; /* 2 results per RE */
+                uexpr ";
+                    maxVal = 50;
+                    var stepSize = 5;
+                    var colHead = 50;
+                    var rowHead = 60;
+                    var margin = 10;
+                    var header = \"Temp.     (C)\";
+                    can = document.getElementById(\"can\");
+                    ctx = can.getContext(\"2d\");
+                    ctx.fillStyle = \"black\"
+                    yScalar = (can.height - colHead - margin) / (maxVal);
+                    xScalar = (can.width - rowHead) / (numSamples + 1);
+                    ctx.strokeStyle = \"rgba(128,128,255, 0.5)\"; // light blue line
+                    ctx.beginPath();
+                    // print  column header
+                    ctx.font = \"10pt Helvetica\"
+                    ctx.fillText(header, 0, colHead - margin);
+                    // print row header and draw horizontal grid lines
+                    ctx.font = \"10pt Helvetica\"
+                    var count =  0;
+                    for (scale = maxVal; scale >= 0; scale -= stepSize) {
+                        y = colHead + (yScalar * count * stepSize);
+                        ctx.fillText(scale, margin,y + margin);
+                        ctx.moveTo(rowHead, y)
+                        ctx.lineTo(can.width, y)
+                        count++;
+                    }
+                    ctx.stroke();
+                    // label samples
+                    ctx.font = \"10pt Helvetica\";
+                    ctx.textBaseline = \"bottom\";
+                    for (i = 0; i < 4; i++) {
+                        calcY(dataValue[i]);
+                        ctx.fillText(dataName[i], xScalar * (i + 1), y - margin);
+                    }
+                    // set a color and a shadow
+                    ctx.fillStyle = \"blue\";
+                    ctx.shadowColor = 'rgba(128,128,128, 0.5)';
+                    ctx.shadowOffsetX = 20;
+                    ctx.shadowOffsetY = 1;
+                    // translate to bottom of graph and scale x,y to match data
+                    ctx.translate(0, can.height - margin);
+                    ctx.scale(xScalar, -1 * yScalar);
+                    // draw bars
+                    for (i = 0; i < 4; i++) {
+                        ctx.fillRect(i + 1, 0, 0.5, dataValue[i]);
+                    }
+                }
+                ";
+                uexpr "
+                function calcY(value) {
+                    y = can.height - value * yScalar;
+                }
+                ";
+            }
+
+        <output> {
+            <html> {
+                <head> {
+                    copy-of $javascript;
+                }
+                <body onload="init()"> {
+                    <div align="center"> {
+                        <p style="font:10pt Helvetica;font-weight:bolder"> "Routing Engine Temperature for " _ $device;
+                        <canvas id="can" height="270" width="650">;
+                    }
+                }
+            }
+        }
+    }
+}
