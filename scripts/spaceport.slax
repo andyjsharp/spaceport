@@ -1,0 +1,44 @@
+version 1.0;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns curl extension = "http://xml.libslax.org/curl";
+
+<xsl:output method="text">;
+
+var $arguments = {
+    <argument> {
+        <name> "name";
+        <description> "Script name";
+    }
+    <argument> {
+        <name> "script";
+        <description> "Script file";
+    }
+}
+
+param $name;
+param $script;
+
+/* globals */
+var $authorization = "Basic " _ slax:base64-encode("user:password");  /* user credentials */
+var $curl = curl:open();
+
+match / {
+    expr "ScriptName: \t" _ $name _"\n";
+    expr "ScriptLocation: " _ $script _"\n";
+
+    /* search for script */
+    var $scriptSearch := {
+        <method> "get";
+        <insecure>;
+        <url> "https://jmp-CLUSTER:8080/api/space/script-management/scripts";
+        <param name="filter"> "(scriptName eq '" _ $name _ "')";
+        <header name="Authorization"> $authorization;
+        <format> "xml";
+    }
+    var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
+    copy-of $scriptSearchResults;
+
+}
