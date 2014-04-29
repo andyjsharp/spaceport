@@ -41,29 +41,73 @@ var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /*
 var $curl = curl:open();
 
 match / {
-        expr "\tScriptName: \t" _ $name _"\n";
-        expr "\tScriptLocation: " _ $script _"\n";
+    expr "\tScriptName: \t" _ $name _"\n";
+    expr "\tScriptLocation: " _ $script _"\n";
+
+    var $payload = slax:document($script);
 
     /* search for script */
     var $scriptSearch := {
-                <method> "get";
-                <insecure>;
-                <url> "https://" _ $server _ "/api/space/script-management/scripts";
-                <param name="filter"> "(scriptName eq '" _ $name _ "')";
-                <header name="Authorization"> $authorization;
-                <format> "xml";
+        <method> "get";
+        <insecure>;
+        <url> "https://" _ $server _ "/api/space/script-management/scripts";
+        <param name="filter"> "(scriptName eq '" _ $name _ "')";
+        <header name="Authorization"> $authorization;
+        <format> "xml";
+    }
+    var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
+    if ($scriptSearchResults/headers/code == "200") {
+        /* script needs to be updated */
+        var $scriptPUT := {
+            <method> "put";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/script-management/scripts/" _ $scriptSearchResults/data/scripts/script/@key;
+            <header name="Authorization"> $authorization;
+            <content-type> "application/vnd.net.juniper.space.script-management.script+xml;version=1;charset=UTF-8";
+            <contents> {
+                <script> {
+                    <scriptName> $name;
+                    <scriptContents> $payload;
+                }
+            }
+            <format> "xml";
         }
-        var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
-        if ($scriptSearchResults/headers/code == "200") {
-                /* script needs to be updated */
-                expr "\tPUT required\n";
-        } else if ($scriptSearchResults/headers/code == "204") {
-                /* script needs to be added */
-                expr "\tPOST required\n";
-
+        var $scriptPUTResults = curl:perform( $curl , $scriptPUT );
+        if ( $scriptPUTResults/headers/code == "200") {
+            expr "\t\t" _ $name _ " updated on " _ $server _ "\n";
+        } else if ($scriptPUTResults/headers/code == "400") {
+            expr "\t\t" _ $name _ " hasn't changed on " _ $server _ "\n";
         } else {
-                /* houston we have a problem */
-                expr "\tWe have a problem...\n";
-                copy-of $scriptSearchResults;
+            expr "\t\tERROR: Unable to update " _ $name _ " on server " _ $server _ "\n";
+            copy-of $scriptPUTResults _ "\n";
         }
+
+    } else if ($scriptSearchResults/headers/code == "204") {
+        /* script needs to be added */
+        var $scriptPOST := {
+            <method> "post";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/script-management/scripts";
+            <header name="Authorization"> $authorization;
+            <content-type> "application/vnd.net.juniper.space.script-management.script+xml;version=1;charset=UTF-8";
+            <contents> {
+                <script> {
+                    <scriptName> $name;
+                    <scriptContents> $payload;
+                }
+            }
+            <format> "xml";
+        }
+        var $scriptPOSTResults = curl:perform( $curl , $scriptPOST );
+        if ($scriptPOSTResults/headers/code == "200") {
+            expr "\t\t" _ $name _ " added to " _ $server _ "\n";
+        } else  {
+            expr "\t\tERROR: Unable to add " _ $name _ " to server " _ $server _ "\n";
+            copy-of $scriptPOSTResults _ "\n";
+        }
+    } else {
+        /* we have a problem */
+        expr "\tWe have a problem...\n";
+        copy-of $scriptSearchResults;
+    }
 }
