@@ -26,6 +26,7 @@ var $authorization = "Basic " _ slax:base64-encode("user:password");  /* user cr
 var $curl = curl:open();
 
 match / {
+    expr "\n";
     expr "ScriptName: \t" _ $name _"\n";
     expr "ScriptLocation: " _ $script _"\n";
 
