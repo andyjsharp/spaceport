@@ -3,7 +3,7 @@ pwd=`pwd`
 echo "Processing git repository..."
 if [ ! -d "$pwd/repository/.git" ]; then
   # Clone repository
-  git clone ssh://git@github.com/repository/repo.git repository
+  git clone ssh://git@github.com/andyjsharp/spaceport.git repository
 else
   # Update repository
   cd repository
@@ -11,7 +11,13 @@ else
   cd ..
 fi
 echo "Processing slax scripts..."
-# Still necessary to read in the list of Space Servers and use their ip address and credentials 
-for f in $(find $pwd/repository/scripts -name '*.slax'); do juise spacehub.slax name "$(basename "$f")" script "$f" server "x.x.x.x" user "temp" password "changeme"; done
+echo ""
+while IFS=, read col1 col2 col3 col4
+do
+  echo "Server Name $col1"
+  for f in $(find $pwd/repository/scripts -name '*.slax'); 
+  do juise spacehub.slax name "$(basename "$f")" script "$f" server "$col2" user "$col3" password "$col4"; 
+  done; 
+done < servers.csv
 echo ""
 echo "All done."
