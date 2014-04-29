@@ -16,30 +16,54 @@ var $arguments = {
         <name> "script";
         <description> "Script file";
     }
+    <argument> {
+        <name> "server";
+        <description> "server ip address";
+    }
+    <argument> {
+        <name> "user";
+        <description> "username";
+    }
+    <argument> {
+        <name> "password";
+        <description> "password";
+    }
 }
 
 param $name;
 param $script;
+param $server;
+param $user;
+param $password;
 
 /* globals */
-var $authorization = "Basic " _ slax:base64-encode("user:password");  /* user credentials */
+var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /* user credentials */
 var $curl = curl:open();
 
 match / {
-    expr "\n";
-    expr "ScriptName: \t" _ $name _"\n";
-    expr "ScriptLocation: " _ $script _"\n";
+        expr "ScriptName: \t" _ $name _"\n";
+        expr "ScriptLocation: " _ $script _"\n";
 
     /* search for script */
     var $scriptSearch := {
-        <method> "get";
-        <insecure>;
-        <url> "https://jmp-CLUSTER:8080/api/space/script-management/scripts";
-        <param name="filter"> "(scriptName eq '" _ $name _ "')";
-        <header name="Authorization"> $authorization;
-        <format> "xml";
-    }
-    var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
-    copy-of $scriptSearchResults;
+                <method> "get";
+                <insecure>;
+                <url> "https://" _ $server _ "/api/space/script-management/scripts";
+                <param name="filter"> "(scriptName eq '" _ $name _ "')";
+                <header name="Authorization"> $authorization;
+                <format> "xml";
+        }
+        var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
+        if ($scriptSearchResults/headers/code == "200") {
+                /* script needs to be updated */
+                expr "PUT required\n";
+        } else if ($scriptSearchResults/headers/code == "204") {
+                /* script needs to be added */
+                expr "POST required\n";
 
+        } else {
+                /* houston we have a problem */
+                expr "We have a problem...\n";
+                copy-of $scriptSearchResults;
+        }
 }
