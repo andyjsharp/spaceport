@@ -41,8 +41,8 @@ var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /*
 var $curl = curl:open();
 
 match / {
-        expr "ScriptName: \t" _ $name _"\n";
-        expr "ScriptLocation: " _ $script _"\n";
+        expr "\tScriptName: \t" _ $name _"\n";
+        expr "\tScriptLocation: " _ $script _"\n";
 
     /* search for script */
     var $scriptSearch := {
@@ -56,14 +56,14 @@ match / {
         var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
         if ($scriptSearchResults/headers/code == "200") {
                 /* script needs to be updated */
-                expr "PUT required\n";
+                expr "\tPUT required\n";
         } else if ($scriptSearchResults/headers/code == "204") {
                 /* script needs to be added */
-                expr "POST required\n";
+                expr "\tPOST required\n";
 
         } else {
                 /* houston we have a problem */
-                expr "We have a problem...\n";
+                expr "\tWe have a problem...\n";
                 copy-of $scriptSearchResults;
         }
 }
