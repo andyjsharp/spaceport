@@ -7,7 +7,7 @@
 <!-- mandatory --><device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
 <description>Disables a physical interface</description>
 <!-- mandatory --><execution-type>Grouped</execution-type>
-<domain-name>GLOBAL</domain-name>
+<domain-name>Global</domain-name>
 <preview-show-parameters>false</preview-show-parameters>
 <preview-show-configuration>true</preview-show-configuration>
 <postview-show-parameters>false</postview-show-parameters>
