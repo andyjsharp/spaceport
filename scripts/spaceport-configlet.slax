@@ -1,0 +1,69 @@
+version 1.1;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns curl extension = "http://xml.libslax.org/curl";
+
+<xsl:output method="text">;
+
+var $arguments = {
+    <argument> {
+        <name> "name";
+        <description> "Configlet name";
+    }
+    <argument> {
+        <name> "configlet";
+        <description> "Configlet file";
+    }
+    <argument> {
+        <name> "server";
+        <description> "server ip address";
+    }
+    <argument> {
+        <name> "user";
+        <description> "username";
+    }
+    <argument> {
+        <name> "password";
+        <description> "password";
+    }
+}
+
+param $name;
+param $configlet;
+param $server;
+param $user;
+param $password;
+
+/* globals */
+var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /* user credentials */
+var $curl = curl:open();
+
+match / {
+    expr jcs:output( "\Configlet:\t" _ $name );
+    expr jcs:output( "\tLocation:\t" _ $configlet );
+
+    var $payload = slax:document($configlet);
+
+    /* configlet needs to be added */
+    var $configletPOST := {
+        <method> "post";
+        <insecure>;
+        <url> "https://" _ $server _ "/api/space/configuration-management/cli-configlets";
+        <header name="Authorization"> $authorization;
+        <content-type> "application/vnd.net.juniper.space.configuration-management.cli-configlet+xml;version=1;charset=UTF-8";
+        <contents> {
+            uexpr $payload;
+        }
+        <format> "xml";
+    }
+    var $configletPOSTResults = curl:perform( $curl , $configletPOST );
+    if ($configletPOSTResults/headers/code == "200") {
+        expr jcs:output( "\t\t" _ $name _ " added to " _ $server );
+    } else  {
+        expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
+        copy-of $configletPOSTResults _ "\n";
+    }
+    expr curl:close($curl);  
+}
