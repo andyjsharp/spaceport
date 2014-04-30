@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><cli-configlets>
+<cli-configlet>
+<!-- version 1.33 -->
+<!-- mandatory --><name>Interface - Deactivation GUI</name>
+<!-- mandatory --><category>Ops</category>
+<context>/device/interface-information/physical-interface</context>
+<!-- mandatory --><device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
+<description>Disables a physical interface</description>
+<!-- mandatory --><execution-type>Grouped</execution-type>
+<preview-show-parameters>false</preview-show-parameters>
+<preview-show-configuration>true</preview-show-configuration>
+<postview-show-parameters>false</postview-show-parameters>
+<postview-show-configuration>true</postview-show-configuration>
+<cli-configlet-pages><!-- At least one configlet page required -->
+<cli-configlet-page>
+<page-number>1</page-number>
+<!-- mandatory --><cli-text>## $INTERFACE is an array when called via GUI but scalar when called via NBI
+## Convert to an array when not called via GUI
+## To support multiple interfaces via the NBI, use the format ge-1/0/0;ge-1/0/1;ge-1/0/2;...
+#if ( !$CONTEXT )
+#set ( $INTERFACE = $INTERFACE.split(";") )
+#end
+interfaces {
+#foreach ( $INTF in $INTERFACE )
+    $INTF {
+        disable;
+    }
+#end
+}</cli-text>
+</cli-configlet-page>
+</cli-configlet-pages>
+<cli-configlet-params>
+</cli-configlet-params>
+</cli-configlet>
+</cli-configlets>
