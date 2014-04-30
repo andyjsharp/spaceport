@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><cli-configlets>
+<?xml version="1.0" encoding="UTF-8"?>
 <cli-configlet>
 <!-- version 1.33 -->
 <!-- mandatory --><name>Interface - Deactivation GUI</name>
@@ -32,4 +32,3 @@ interfaces {
 <cli-configlet-params>
 </cli-configlet-params>
 </cli-configlet>
-</cli-configlets>
