@@ -7,7 +7,7 @@
 <!-- mandatory --><device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
 <description>Activates one or multiple interfaces.</description>
 <!-- mandatory --><execution-type>Grouped</execution-type>
-<domain-name>GLOBAL</domain-name>
+<domain-name>Global</domain-name>
 <preview-show-parameters>false</preview-show-parameters>
 <preview-show-configuration>true</preview-show-configuration>
 <postview-show-parameters>false</postview-show-parameters>
