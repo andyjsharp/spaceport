@@ -12,8 +12,6 @@ ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
 /* @ISLOCAL = "false" */
 /* @PROMOTE = "yes" */
 
-
-
 match / {
     <op-script-results> {
         var $local = jcs:open();
