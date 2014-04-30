@@ -9,7 +9,7 @@ ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
 /* @CONTEXT = "/device" */
 /* @NAME = "RouteEngine CPU and Temp" */
 /* @DESCRIPTION = "RE Bar chart example" */
-/* @ISLOCAL = "true" */
+/* @ISLOCAL = "false" */
 /* @PROMOTE = "yes" */
 
 
