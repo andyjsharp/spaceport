@@ -1,4 +1,4 @@
-version 1.0;
+version 1.1;
 
 ns junos = "http://xml.juniper.net/junos/*/junos";
 ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
@@ -28,6 +28,10 @@ var $arguments = {
         <name> "password";
         <description> "password";
     }
+    <argument> {
+        <name> "deploy";
+        <description> "deploy updated scripts yes|no";
+    }
 }
 
 param $name;
@@ -35,14 +39,15 @@ param $script;
 param $server;
 param $user;
 param $password;
+param $deploy;
 
 /* globals */
 var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /* user credentials */
 var $curl = curl:open();
 
 match / {
-    expr "\tScriptName: \t" _ $name _"\n";
-    expr "\tScriptLocation: " _ $script _"\n";
+    expr jcs:output( "\tScript:\t" _ $name );
+    expr jcs:output( "\tLocation:\t" _ $script );
 
     var $payload = slax:document($script);
 
@@ -74,12 +79,101 @@ match / {
         }
         var $scriptPUTResults = curl:perform( $curl , $scriptPUT );
         if ( $scriptPUTResults/headers/code == "200") {
-            expr "\t\t" _ $name _ " updated on " _ $server _ "\n";
-        } else if ($scriptPUTResults/headers/code == "400") {
-            expr "\t\t" _ $name _ " hasn't changed on " _ $server _ "\n";
+            expr jcs:output( "\tStatus:\t\t" _ $name _ " updated on " _ $server _ " successfully." );
+            if ( $deploy == "yes" ) {
+                /* redeploy script to all devices */
+                /* Search for associated devices */
+                var $associatedSearch := {
+                    <method> "get";
+                    <insecure>;
+                    <url> "https://" _ $server _ "/api/space/script-management/scripts/" _ $scriptSearchResults/data/scripts/script/@key _ "/view-associated-devices";
+                    <header name="Authorization"> $authorization;
+                    <format> "xml";
+                }
+                var $associatedSearchResults = curl:perform( $curl , $associatedSearch );
+                for-each ( $associatedSearchResults/data/script-device-associations/script-device-association) {
+                    expr jcs:output( "\tAssoc. device:\t" _ device/device-name _ " \(" _ device/ip-address _ "\)" _ " current version: " _ deployed-version _ " script status: " _ script-status );
+
+                    /* create hornet queue*/
+                    var $queueCreation := {
+                        <method> "post";
+                        <insecure>;
+                        <url> "https://" _ $server _ "/api/hornet-q/queues";
+                        <header name="Authorization"> $authorization;
+                        <format> "xml";
+                        <content-type> "application/hornetq.jms.queue+xml";
+                        <contents> {
+                            <queue name="deployScript"> {
+                                <durable> "false";
+                            }
+                        }
+                    }
+                    var $queueCreationResults = curl:perform( $curl , $queueCreation );
+
+                    /* exec-deploy */
+                    var $scriptDeploy := {
+                        <method> "post";
+                        <insecure>;
+                        <url> "https://" _ $server _ "/api/space/script-management/scripts/exec-deploy?queue=https://" _ $server _ "/api/hornet-q/queues/jms.queue.deployScript";
+                        <header name="Authorization"> $authorization;
+                        <format> "xml";
+                        <content-type> "application/vnd.net.juniper.space.script-management.exec-deploy+xml;version=2;charset=UTF-8";
+                        <contents> {
+                            <exec-deploy> {
+                                <scriptMgmt> {
+                                    uexpr '<script href="/api/space/script-management/scripts/' _ $scriptSearchResults/data/scripts/script/@key _ '" />';
+                                    uexpr '<device href="/api/space/device-management/devices/' _ device/device-id _ '" />';
+                                }
+                            }
+                        }
+                    }
+                    var $scriptDeployResults = curl:perform( $curl , $scriptDeploy );
+                    expr jcs:output( "\tTask id:\t" _ $scriptDeployResults/data/task/id );
+
+                    /* verify job */
+                    mvar $jobstatus = "UNDETERMINED";
+                    while ( $jobstatus == "UNDETERMINED" ) {
+                        expr jcs:sleep(2);
+                        var $getjobstatuses := {
+                            <method> "get";
+                            <insecure>;
+                            <url> "https://" _ $server _ "/api/space/job-management/jobs/" _ $scriptDeployResults/data/task/id _ "/progress-update";
+                            <header name="Authorization"> $authorization;
+                            <format> "xml";
+                        } 
+                        var $statuses-results = curl:perform( $curl , $getjobstatuses );
+                        set $jobstatus = $statuses-results/data/progress-update/status;
+                    }
+
+                    if ( $jobstatus == "SUCCESS") {
+                        /* job successful */
+                        expr jcs:output( "\tTask status:\tSUCCESS" );
+                    }
+                    else {
+                        /* we have a problem */
+                        expr jcs:output( "\tTask status:\t" _ $jobstatus );
+                    }
+
+                    /* remove hornet queue */
+                    var $queueDeletion := {
+                        <method> "delete";
+                        <insecure>;
+                        <url> "https://" _ $server _ "/api/hornet-q/queues/jms.queue.deployScript";
+                        <header name="Authorization"> $authorization;
+                        <format> "xml";
+                        <content-type> "application/hornetq.jms.queue+xml";
+                    }
+                    var $queueDeletionResults = curl:perform( $curl , $queueDeletion );
+                }
+            }
+            expr jcs:output();
+        } else if ($scriptPUTResults/headers/code == "400" && $scriptPUTResults/raw-data == "New version content is same as current version content, so no update will happen") {
+            expr jcs:output( "\tStatus:\t\t" _ $name _ " hasn't changed on " _ $server _ ", no update required." );
+            expr jcs:output();
+            expr jcs:output();
         } else {
-            expr "\t\tERROR: Unable to update " _ $name _ " on server " _ $server _ "\n";
-            copy-of $scriptPUTResults _ "\n";
+            expr jcs:output( "\tERROR:\t\tUnable to update " _ $name _ " on server " _ $server );
+            copy-of $scriptPUTResults _ "\n\n";
         }
 
     } else if ($scriptSearchResults/headers/code == "204") {
@@ -100,14 +194,15 @@ match / {
         }
         var $scriptPOSTResults = curl:perform( $curl , $scriptPOST );
         if ($scriptPOSTResults/headers/code == "200") {
-            expr "\t\t" _ $name _ " added to " _ $server _ "\n";
+            expr jcs:output( "\t\t" _ $name _ " added to " _ $server );
         } else  {
-            expr "\t\tERROR: Unable to add " _ $name _ " to server " _ $server _ "\n";
+            expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
             copy-of $scriptPOSTResults _ "\n";
         }
     } else {
         /* we have a problem */
-        expr "\tWe have a problem...\n";
+        expr jcs:output( "\tWe have a problem..." );
         copy-of $scriptSearchResults;
     }
+    expr curl:close($curl);  
 }
