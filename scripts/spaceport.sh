@@ -11,12 +11,12 @@ else
   cd ..
 fi
 echo "Processing slax scripts..."
-echo ""
-while IFS=, read col1 col2 col3 col4
+echo " "
+while IFS=, read col1 col2 col3 col4 col5
 do
-  echo "Server Name $col1"
+  echo "Server: $col1 ($col2)"
   for f in $(find $pwd/repository/scripts -name '*.slax'); 
-  do juise spacehub.slax name "$(basename "$f")" script "$f" server "$col2" user "$col3" password "$col4"; 
+    do juise spaceport.slax name "$(basename "$f")" script "$f" server "$col2" user "$col3" password "$col4" deploy "$col5";
   done; 
 done < servers.csv
 echo ""
