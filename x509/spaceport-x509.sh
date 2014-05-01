@@ -6,7 +6,7 @@ echo " "
 grep -v '^#' servers.csv | while IFS=, read col1 col2 col3 col4 col5
 do
   echo "Creating Session..."
-  curl -Lks -c cookies/cookie.jar -o temp/tempdata.txt -E certs/super.pem:pass https://$col2/mainui &min=10
+  curl -Lks -c cookies/cookie.jar -o temp/tempdata.txt -E certs/super.pem:pass https://$col2/mainui
   jsessionid=`grep -e 'JSESSIONID.*"' cookies/cookie.jar | grep -o '".*"'`
   jsessionidsso=`grep -e 'JSESSIONIDSSO.*' cookies/cookie.jar | awk -F" " '{print $7 }'`
   echo "Server: $col1 ($col2)"
