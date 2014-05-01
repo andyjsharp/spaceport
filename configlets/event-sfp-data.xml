@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?><cli-configlets>
+<cli-configlet>
+<!-- version 1.0 -->
+<!-- mandatory --><name>SFP Data Generation Event - Configuration</name>
+<!-- mandatory --><category>Views</category>
+<context>/device</context>
+<!-- mandatory --><device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
+<description>Setup the event to perform daily SFP data generation.
+Note: event-script:  event-sfp-data.slax should be staged first before applying this configuration.</description>
+<!-- mandatory --><execution-type>Grouped</execution-type>
+<preview-show-parameters>true</preview-show-parameters>
+<preview-show-configuration>true</preview-show-configuration>
+<postview-show-parameters>true</postview-show-parameters>
+<postview-show-configuration>true</postview-show-configuration>
+<cli-configlet-pages><!-- At least one configlet page required -->
+<cli-configlet-page>
+<page-number>1</page-number>
+<!-- mandatory --><cli-text>event-options {
+    generate-event {
+        SFP-DATA-DUMP time-of-day &quot;03:30:00 +0100&quot;;
+    }
+    policy SFP-DATA-DUMP {
+        events SFP-DATA-DUMP;
+        then {
+            event-script event-sfp-data.slax {
+            }
+        }
+    }
+    event-script {
+        file event-sfp-data.slax;
+    }
+}</cli-text>
+</cli-configlet-page>
+</cli-configlet-pages>
+<cli-configlet-params>
+</cli-configlet-params>
+</cli-configlet>
+</cli-configlets>
