@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><cli-configlets>
+<?xml version="1.0" encoding="UTF-8"?>
 <cli-configlet>
 <!-- version 1.0 -->
 <!-- mandatory --><name>SFP Data Generation Event - Configuration</name>
@@ -35,4 +35,4 @@ Note: event-script:  event-sfp-data.slax should be staged first before applying 
 <cli-configlet-params>
 </cli-configlet-params>
 </cli-configlet>
-</cli-configlets>
+
