@@ -1,0 +1,84 @@
+version 1.0;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns str = "http://exslt.org/strings";
+ns exsl extension = "http://exslt.org/common";
+
+import "../import/junos.xsl";
+
+/* @ISLOCAL = "true" */
+/* @CONTEXT = "/device[name='VIEW-ONLY']" */
+/* @NAME = "Interface Script" */
+/* @DESCRIPTION = "VLAN Tagging and VLAN Id" */
+
+var $arguments = {
+  <argument> {
+    <name> "CONTEXT";
+    <description> "The CONTEXT.";
+  }
+}
+param $CONTEXT;
+
+/* Script to parse the vlan tagging implemented */
+/* Supports flexible-vlan-tagging , vlan-tagging and stacked-vlan-tagging */
+
+match / {
+  <op-script-results> {
+    var $connection = jcs:open();
+    <output> {
+      var $config-rpc = <get-configuration database="committed"> {
+        <configuration> {
+          <interfaces> {
+          }
+        }
+      }
+      var $results = jcs:execute( $connection , $config-rpc );
+      for-each ( $results/interfaces/interface ) {
+        <interface> {
+          <name> name;
+          if ( flexible-vlan-tagging ) {
+            <vlan-tagging> {
+              expr "Flexible";
+            }
+          }
+          else if ( vlan-tagging ) {
+            <vlan-tagging> {
+              expr "802.1Q";
+            }
+          }
+          else if ( stacked-vlan-tagging ) {
+            <vlan-tagging> {
+              expr "QinQ";
+            }
+          }
+          else {
+            <vlan-tagging> {
+              expr "none";
+            }
+          }
+          for-each ( unit ) {
+            <unit> {
+              <name> name;
+              if ( vlan-id ) {
+                <vlan-id> vlan-id;
+              }
+              else if ( vlan-tags ) {
+                <vlan-id> {
+                  if (vlan-tags/outer){
+                    expr "outer:" _ vlan-tags/outer _ " ";
+                  }
+                  if (vlan-tags/inner){
+                    expr "inner:" _ vlan-tags/inner;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    var $close-connection = jcs:close( $connection );
+  }
+}
