@@ -1,0 +1,132 @@
+<configuration-view>
+	<name>Phys. Interfaces</name>
+	<title>Physical Interfaces View</title>
+	<device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
+	<context>/device</context>
+	<description>Grid view of physical interfaces.</description>
+	<order>1</order>
+	<view-type>Grid View</view-type>
+	<configuration-view-params>
+		<configuration-view-param>
+			<parameter>Device_Name</parameter>
+			<display-name>Device Name</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device/name/text()</configured-value-xpath>
+			<order>1</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Physical_Interface_Name</parameter>
+			<display-name>Physical Interface Name</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[starts-with(name,'xe-') or starts-with(name,'ge-')]/name/text()</configured-value-xpath>
+			<order>2</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>IP_Address</parameter>
+			<display-name>IP Address</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[name='$Physical_Interface_Name']/unit[name='0']/family/inet/address/name/text()</configured-value-xpath>
+			<order>3</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>MAC_Address</parameter>
+			<display-name>MAC Address</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/hardware-physical-address</configured-value-xpath>
+			<order>4</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Operational_Status</parameter>
+			<display-name>Operational Status</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/oper-status/text()</configured-value-xpath>
+			<order>5</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Admin_Status</parameter>
+			<display-name>Admin Status</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/admin-status/text()</configured-value-xpath>
+			<order>6</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Encapsulation</parameter>
+			<display-name>Encapsulation</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/link-level-type/text()</configured-value-xpath>
+			<order>7</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Link_Type</parameter>
+			<display-name>Link Type</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[name='$Physical_Interface_Name']/link-mode</configured-value-xpath>
+			<order>8</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Speed</parameter>
+			<display-name>Speed</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/speed/text()</configured-value-xpath>
+			<order>9</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>MTU</parameter>
+			<display-name>MTU</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/mtu/text()</configured-value-xpath>
+			<order>10</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Description</parameter>
+			<display-name>Description</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/description/text()</configured-value-xpath>
+			<order>11</order>
+		</configuration-view-param>
+	</configuration-view-params>
+</configuration-view>
