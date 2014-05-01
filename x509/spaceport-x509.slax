@@ -202,7 +202,8 @@ _ script-status );
     } else {
         /* we have a problem */
         expr jcs:output( "\tWe have a problem..." );
-        copy-of $scriptSearchResults;
+        expr jcs:output( "\t" _ $scriptSearchResults );
+        expr jcs:output( "\r" );
     }
     expr curl:close($curl);
 }
