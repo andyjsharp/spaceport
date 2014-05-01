@@ -60,7 +60,7 @@ match / {
     }
     var $configletPOSTResults = curl:perform( $curl , $configletPOST );
     if ($configletPOSTResults/headers/code == "200") {
-        expr jcs:output( "\t\t" _ $name _ " added to " _ $server );
+        expr jcs:output( "\tStatus:\t" _ $name _ " added to " _ $server );
     } else  {
         expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
         copy-of $configletPOSTResults _ "\n";
