@@ -18,12 +18,15 @@ do
   for f in $(find $pwd/repository/scripts -name '*.slax');
     do juise spaceport.slax name "$(basename "$f")" script "$f" server "$col2" user "$col3" password "$col4" deploy "$col5";
   done;
+  echo ""
   for f in $(find $pwd/repository/configlets -name '*.xml');
     do juise spaceport-configlet.slax name "$(basename "$f")" configlet "$f" server "$col2" user "$col3" password "$col4";
   done;
+  echo ""
   for f in $(find $pwd/repository/views -name '*.xml');
     do juise spaceport-views.slax name "$(basename "$f")" view "$f" server "$col2" user "$col3" password "$col4";
   done;
+  echo ""
 done
 echo ""
 echo "All done."
