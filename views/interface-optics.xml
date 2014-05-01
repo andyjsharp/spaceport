@@ -1,0 +1,110 @@
+<configuration-view>
+	<name>Interface Optics</name>
+	<title>Interface Optics</title>
+	<device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
+	<context>/device</context>
+	<description>Diagnostic optics information</description>
+	<order>3</order>
+	<view-type>Grid View</view-type>
+	<configuration-view-params>
+		<configuration-view-param>
+			<parameter>Device_Name</parameter>
+			<display-name>Device Name</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device/name/text()</configured-value-xpath>
+			<order>1</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Physical_Interface_Name</parameter>
+			<display-name>Physical Interface Name</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[starts-with(name,'xe-') or starts-with(name,'ge-')]/name/text()</configured-value-xpath>
+			<order>2</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>laser-bias-current</parameter>
+			<display-name>Laser Bias Current</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-optical-diags.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/physical-interface[name='$Physical_Interface_Name']/laser-bias-current/text()</configured-value-xpath>
+			<order>3</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>laser-output-power</parameter>
+			<display-name>Laser Output Power</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-optical-diags.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/physical-interface[name='$Physical_Interface_Name']/laser-output-power/text()</configured-value-xpath>
+			<order>4</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>laser-output-power-dbm</parameter>
+			<display-name>Laser Output Power dBm</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-optical-diags.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/physical-interface[name='$Physical_Interface_Name']/laser-output-power-dbm/text()</configured-value-xpath>
+			<order>5</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>module-temperature</parameter>
+			<display-name>Module Temperature</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-optical-diags.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/physical-interface[name='$Physical_Interface_Name']/module-temperature/text()</configured-value-xpath>
+			<order>6</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>optics-vendor-part-number</parameter>
+			<display-name>Part Number</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-optical-diags.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/physical-interface[name='$Physical_Interface_Name']/optics-vendor-part-number/text()</configured-value-xpath>
+			<order>7</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>optics-vendor-material-number</parameter>
+			<display-name>Material Number</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-optical-diags.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/physical-interface[name='$Physical_Interface_Name']/optics-vendor-material-number/text()</configured-value-xpath>
+			<order>8</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Location</parameter>
+			<display-name>Location</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>true</customized>
+			<editable>true</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/customized-attribute[name='Location']</configured-value-xpath>
+			<order>9</order>
+		</configuration-view-param>
+	</configuration-view-params>
+</configuration-view>
