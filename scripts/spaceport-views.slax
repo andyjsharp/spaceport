@@ -1,0 +1,101 @@
+version 1.1;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns curl extension = "http://xml.libslax.org/curl";
+
+<xsl:output method="text">;
+
+var $arguments = {
+    <argument> {
+        <name> "name";
+        <description> "Configuration View name";
+    }
+    <argument> {
+        <name> "view";
+        <description> "Configuration View file";
+    }
+    <argument> {
+        <name> "server";
+        <description> "server ip address";
+    }
+    <argument> {
+        <name> "user";
+        <description> "username";
+    }
+    <argument> {
+        <name> "password";
+        <description> "password";
+    }
+}
+
+param $name;
+param $view;
+param $server;
+param $user;
+param $password;
+
+/* globals */
+var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /* user credentials */
+var $curl = curl:open();
+
+match / {
+    expr jcs:output( "\tView: " _ $name );
+    expr jcs:output( "\tLocation:\t" _ $view );
+
+    var $payload = slax:document($view);
+
+    /* view needs to be added */
+    var $viewPOST := {
+        <method> "post";
+        <insecure>;
+        <url> "https://" _ $server _ "/api/space/configuration-view-management/configuration-views";
+        <header name="Authorization"> $authorization;
+        <content-type> "application/vnd.net.juniper.space.configuration-view-management.configuration-view+xml;version=1;charset=UTF-8";
+        <contents> {
+            uexpr $payload;
+        }
+        <format> "xml";
+    }
+    var $viewPOSTResults = curl:perform( $curl , $viewPOST );
+    if ($viewPOSTResults/headers/code == "200") {
+        expr jcs:output( "\tStatus:\t\t" _ $name _ " added to " _ $server );
+    } else if ($viewPOSTResults/headers/code == "400" && $viewPOSTResults/raw-data  == "configuration view name already exists.") {
+        /* Update Configuration View */
+        expr jcs:output("\tStatus:\t\tView already exists, update in progress...");
+        /* get view name from within the xml file */
+        var $viewName = jcs:regex("<name>([^<]+)</name>",$payload)[2];
+        /* search for all views as the filter parameter isnt supported, use a predicate to filter the results instead. */
+        var $viewSearch := {
+            <method> "get";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/configuration-view-management/configuration-views";
+            <header name="Authorization"> $authorization;
+            <format> "xml";
+        }
+        var $viewSearchResults = curl:perform( $curl , $viewSearch);
+        var $viewPUT := {
+            <method> "put";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/configuration-view-management/configuration-views/" _ $viewSearchResults/data/configuration-views/configuration-view[name =
+$viewName]/@key;
+            <header name="Authorization"> $authorization;
+            <content-type> "application/vnd.net.juniper.space.configuration-view-management.configuration-view+xml;version=1;charset=UTF-8";
+            <contents> {
+                uexpr $payload;
+            }
+            <format> "xml";
+        }
+        var $viewPUTResults = curl:perform( $curl , $viewPUT );
+        if ($viewPUTResults/headers/code == "200") {
+            expr jcs:output("\tUpdate:\t\tUpdating view id " _ $viewSearchResults/data/configuration-views/configuration-view[name = $viewName]/@key _ " successful.");
+        } else {
+            expr jcs:output("\tERROR:\t\tUpdating view id " _ $viewSearchResults/data/configuration-views/configuration-view/@key _ " failed.");
+        }
+    } else  {
+        expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
+        copy-of $viewPOSTResults;
+    }
+    expr curl:close($curl);
+}
