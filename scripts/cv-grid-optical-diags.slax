@@ -1,0 +1,94 @@
+version 1.1;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns str = "http://exslt.org/strings";
+ns exsl extension = "http://exslt.org/common";
+
+import "../import/junos.xsl";
+
+/* @ISLOCAL = "true" */
+/* @CONTEXT = "/device[name='VIEW-ONLY']" */
+/* @NAME = "Optics Diagnostics" */
+/* @DESCRIPTION = "Optics Diagnostics and Vendor Extension" */
+
+var $arguments = {
+    <argument> {
+        <name> "CONTEXT";
+        <description> "The CONTEXT.";
+    }
+}
+param $CONTEXT;
+mvar $name;
+
+match / {
+    <op-script-results> {
+        var $connection = jcs:open();
+        <output> {
+            var $get-interface-optics-diagnostics-information-rpc = <get-interface-optics-diagnostics-information> {
+            }
+            var $results = jcs:execute( $connection , $get-interface-optics-diagnostics-information-rpc );
+            var $show-interfaces-optics-vendor-extension-rpc = <show-interfaces-optics-vendor-extension> {
+            }
+            var $vendor-results = jcs:execute( $connection , $show-interfaces-optics-vendor-extension-rpc );
+
+            for-each ( $results/physical-interface ) {
+            	<physical-interface> {
+            		<name> name;
+            		<laser-bias-current> {
+            			if ( optics-diagnostics/laser-bias-current ) {
+            				expr optics-diagnostics/laser-bias-current;
+            			}
+            			else {
+            				expr "n/a";
+            			}
+            		}
+            		<laser-output-power> {
+            			if ( optics-diagnostics/laser-output-power ) {
+            				expr optics-diagnostics/laser-output-power;
+            			}
+            			else {
+            				expr "n/a";
+            			}
+								}
+								<laser-output-power-dbm> {
+									if ( optics-diagnostics/laser-output-power-dbm ) {
+            				expr optics-diagnostics/laser-output-power-dbm;
+            			}
+            			else {
+            				expr "n/a";
+            			}
+            		}
+            		<module-temperature> {
+            			if ( optics-diagnostics/module-temperature ) {
+            				expr optics-diagnostics/module-temperature;
+            			}
+            			else {
+            				expr "n/a";
+            			}
+            		}
+            		<optics-vendor-part-number> {
+            			set $name = name;
+            			if ( $vendor-results/physical-interface[name=$name]/optics-diagnostics-vendor-extension/optics-vendor-part-number ) {
+            				expr $vendor-results/physical-interface[name=$name]/optics-diagnostics-vendor-extension/optics-vendor-part-number;
+									}
+									else {
+										expr "n/a";
+									}
+								}
+            		<optics-vendor-material-number> {
+            			if ( $vendor-results/physical-interface[name=$name]/optics-diagnostics-vendor-extension/optics-vendor-material-number ) {
+            				expr $vendor-results/physical-interface[name=$name]/optics-diagnostics-vendor-extension/optics-vendor-material-number;
+									}
+									else {
+										expr "n/a";
+									}
+								}
+            	}
+            }
+        }
+        var $close-connection = jcs:close( $connection );
+    }
+}
+
