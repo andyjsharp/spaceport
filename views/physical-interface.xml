@@ -128,5 +128,16 @@
 			<configured-value-xpath>/device[name='$Device_Name']/interface-information/physical-interface[name='$Physical_Interface_Name']/description/text()</configured-value-xpath>
 			<order>11</order>
 		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>vlan-tag</parameter>
+			<display-name>VLAN Tagging</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-physical.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/interface[name='$Physical_Interface_Name']/vlan-tagging/text()</configured-value-xpath>
+			<order>12</order>
+		</configuration-view-param>
 	</configuration-view-params>
 </configuration-view>
