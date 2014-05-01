@@ -1,0 +1,95 @@
+version 1.1;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns curl extension = "http://xml.libslax.org/curl";
+
+<xsl:output method="text">;
+
+var $arguments = {
+    <argument> {
+        <name> "name";
+        <description> "Configlet name";
+    }
+    <argument> {
+        <name> "configlet";
+        <description> "Configlet file";
+    }
+    <argument> {
+        <name> "server";
+        <description> "server ip address";
+    }
+}
+
+param $name;
+param $configlet;
+param $server;
+param $JSESSIONID;
+param $JSESSIONIDSSO;
+
+/* globals */
+var $curl = curl:open();
+
+match / {
+    expr jcs:output( "\tConfiglet: " _ $name );
+    expr jcs:output( "\tLocation:\t" _ $configlet );
+
+    var $payload = slax:document($configlet);
+
+    /* configlet needs to be added */
+    var $configletPOST := {
+        <method> "post";
+        <insecure>;
+        <url> "https://" _ $server _ "/api/space/configuration-management/cli-configlets";
+        <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+        <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+        <content-type> "application/vnd.net.juniper.space.configuration-management.cli-configlet+xml;version=1;charset=UTF-8";
+        <contents> {
+            uexpr $payload;
+        }
+        <format> "xml";
+    }
+    var $configletPOSTResults = curl:perform( $curl , $configletPOST );
+    if ($configletPOSTResults/headers/code == "200") {
+        expr jcs:output( "\tStatus:\t\t" _ $name _ " added to " _ $server );
+    } else if ($configletPOSTResults/headers/code == "400" && $configletPOSTResults/raw-data  == "CLI Configlet name already exists.") {
+        /* Update CLI Configlet */
+        expr jcs:output("\tStatus:\t\tConfiglet already exists, update in progress...");
+        /* get cli configlet name from within the xml file */
+        var $configletName = jcs:regex("<name>([^<]+)</name>",$payload)[2];
+        /* search for cli configlet */
+        var $configletSearch := {
+            <method> "get";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/configuration-management/cli-configlets";
+            <param name="filter"> "(name eq '" _ $configletName _ "')";
+            <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+            <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+            <format> "xml";
+        }
+        var $configletSearchResults = curl:perform( $curl , $configletSearch);
+        var $configletPUT := {
+            <method> "put";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/configuration-management/cli-configlets/" _ $configletSearchResults/data/cli-configlets/cli-configlet/@key;
+            <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+            <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+            <content-type> "application/vnd.net.juniper.space.configuration-management.cli-configlet+xml;version=2;charset=UTF-8";
+            <contents> {
+                uexpr $payload;
+            }
+            <format> "xml";
+        }
+        var $configletPUTResults = curl:perform( $curl , $configletPUT );
+        if ($configletPUTResults/headers/code == "200") {
+            expr jcs:output("\tUpdate:\t\tUpdating configlet id " _ $configletSearchResults/data/cli-configlets/cli-configlet/@key _ " successful.");
+        } else {
+            expr jcs:output("\tERROR:\t\tUpdating configlet id " _ $configletSearchResults/data/cli-configlets/cli-configlet/@key _ " failed.");
+        }
+    } else  {
+        expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
+        copy-of $configletPOSTResults;
+    }
+    expr curl:close($curl);
+}
