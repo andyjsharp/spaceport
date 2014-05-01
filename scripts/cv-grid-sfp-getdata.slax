@@ -1,0 +1,45 @@
+version 1.1;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns str = "http://exslt.org/strings";
+ns exsl extension = "http://exslt.org/common";
+
+import "../import/junos.xsl";
+
+/* @ISLOCAL = "true" */
+/* @CONTEXT = "/device[name='VIEW-ONLY']" */
+/* @NAME = "SFP Grid Script" */
+/* @DESCRIPTION = "View Script to return SFP data." */
+
+var $arguments = {
+	<argument> {
+		<name> "CONTEXT";
+		<description> "The CONTEXT.";
+	}
+}
+param $CONTEXT;
+
+match / {
+	<op-script-results> {
+		/* get file from remote server							*/
+		/* connection details are managed by space	*/
+		/* as this is a locally executed script			*/
+		var $fileget = {
+			<file-get> {
+				<filename> "/var/tmp/sfp-raw-data.xml";
+				<encoding> "ascii";
+			}
+		}
+
+		var $connection = jcs:open();
+		var $file = jcs:execute( $connection , $fileget );
+
+		/* output data without escape characters */
+		uexpr $file;
+
+		var $close-results = jcs:close( $connection );
+	}
+}
+
