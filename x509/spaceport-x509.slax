@@ -1,0 +1,208 @@
+version 1.1;
+
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns curl extension = "http://xml.libslax.org/curl";
+
+<xsl:output method="text">;
+
+var $arguments = {
+    <argument> {
+        <name> "name";
+        <description> "Script name";
+    }
+    <argument> {
+        <name> "script";
+        <description> "Script file";
+    }
+    <argument> {
+        <name> "server";
+        <description> "server ip address";
+    }
+    <argument> {
+        <name> "deploy";
+        <description> "deploy updated scripts yes|no";
+    }
+}
+
+param $name;
+param $script;
+param $server;
+param $deploy;
+param $JSESSIONID;
+param $JSESSIONIDSSO;
+
+/* globals */
+var $curl = curl:open();
+
+match / {
+    expr jcs:output( "\tScript:\t" _ $name );
+    expr jcs:output( "\tLocation:\t" _ $script );
+
+    var $payload = slax:document($script);
+
+    /* search for script */
+    var $scriptSearch := {
+        <method> "get";
+        <insecure>;
+        <url> "https://" _ $server _ "/api/space/script-management/scripts";
+        <param name="filter"> "(scriptName eq '" _ $name _ "')";
+        <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+        <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+        <format> "xml";
+    }
+    var $scriptSearchResults = curl:perform( $curl , $scriptSearch );
+    if ($scriptSearchResults/headers/code == "200") {
+        /* script needs to be updated */
+        var $scriptPUT := {
+            <method> "put";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/script-management/scripts/" _ $scriptSearchResults/data/scripts/script/@key;
+            <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+            <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+            <content-type> "application/vnd.net.juniper.space.script-management.script+xml;version=1;charset=UTF-8";
+            <contents> {
+                <script> {
+                    <scriptName> $name;
+                    <scriptContents> $payload;
+                }
+            }
+            <format> "xml";
+        }
+        var $scriptPUTResults = curl:perform( $curl , $scriptPUT );
+        if ( $scriptPUTResults/headers/code == "200") {
+            expr jcs:output( "\tStatus:\t\t" _ $name _ " updated on " _ $server _ " successfully." );
+            if ( $deploy == "yes" ) {
+                /* redeploy script to all devices */
+                /* Search for associated devices */
+                var $associatedSearch := {
+                    <method> "get";
+                    <insecure>;
+                    <url> "https://" _ $server _ "/api/space/script-management/scripts/" _ $scriptSearchResults/data/scripts/script/@key _ "/view-associated-devices";
+                    <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+                    <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+                    <format> "xml";
+                }
+                var $associatedSearchResults = curl:perform( $curl , $associatedSearch );
+                for-each ( $associatedSearchResults/data/script-device-associations/script-device-association) {
+                    expr jcs:output( "\tAssoc. device:\t" _ device/device-name _ " \(" _ device/ip-address _ "\)" _ " current version: " _ deployed-version _ " script status: "
+_ script-status );
+
+                    /* create hornet queue*/
+                    var $queueCreation := {
+                        <method> "post";
+                        <insecure>;
+                        <url> "https://" _ $server _ "/api/hornet-q/queues";
+                        <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+                        <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+                        <format> "xml";
+                        <content-type> "application/hornetq.jms.queue+xml";
+                        <contents> {
+                            <queue name="deployScript"> {
+                                <durable> "false";
+                            }
+                        }
+                    }
+                    var $queueCreationResults = curl:perform( $curl , $queueCreation );
+
+                    /* exec-deploy */
+                    var $scriptDeploy := {
+                        <method> "post";
+                        <insecure>;
+                        <url> "https://" _ $server _ "/api/space/script-management/scripts/exec-deploy?queue=https://" _ $server _ "/api/hornet-q/queues/jms.queue.deployScript";
+                        <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+                        <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+                        <format> "xml";
+                        <content-type> "application/vnd.net.juniper.space.script-management.exec-deploy+xml;version=2;charset=UTF-8";
+                        <contents> {
+                            <exec-deploy> {
+                                <scriptMgmt> {
+                                    uexpr '<script href="/api/space/script-management/scripts/' _ $scriptSearchResults/data/scripts/script/@key _ '" />';
+                                    uexpr '<device href="/api/space/device-management/devices/' _ device/device-id _ '" />';
+                                }
+                            }
+                        }
+                    }
+                    var $scriptDeployResults = curl:perform( $curl , $scriptDeploy );
+                    expr jcs:output( "\tTask id:\t" _ $scriptDeployResults/data/task/id );
+
+                    /* verify job */
+                    mvar $jobstatus = "UNDETERMINED";
+                    while ( $jobstatus == "UNDETERMINED" ) {
+                        expr jcs:sleep(2);
+                        var $getjobstatuses := {
+                            <method> "get";
+                            <insecure>;
+                            <url> "https://" _ $server _ "/api/space/job-management/jobs/" _ $scriptDeployResults/data/task/id _ "/progress-update";
+                            <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+                            <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+                            <format> "xml";
+                        }
+                        var $statuses-results = curl:perform( $curl , $getjobstatuses );
+                        set $jobstatus = $statuses-results/data/progress-update/status;
+                    }
+
+                    if ( $jobstatus == "SUCCESS") {
+                        /* job successful */
+                        expr jcs:output( "\tTask status:\tSUCCESS" );
+                    }
+                    else {
+                        /* we have a problem */
+                        expr jcs:output( "\tTask status:\t" _ $jobstatus );
+                    }
+
+                    /* remove hornet queue */
+                    var $queueDeletion := {
+                        <method> "delete";
+                        <insecure>;
+                        <url> "https://" _ $server _ "/api/hornet-q/queues/jms.queue.deployScript";
+                        <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+                        <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+                        <format> "xml";
+                        <content-type> "application/hornetq.jms.queue+xml";
+                    }
+                    var $queueDeletionResults = curl:perform( $curl , $queueDeletion );
+                }
+            }
+            expr jcs:output();
+        } else if ($scriptPUTResults/headers/code == "400" && $scriptPUTResults/raw-data == "New version content is same as current version content, so no update will happen") {
+            expr jcs:output( "\tStatus:\t\t" _ $name _ " hasn't changed on " _ $server _ ", no update required." );
+            expr jcs:output();
+            expr jcs:output();
+        } else {
+            expr jcs:output( "\tERROR:\t\tUnable to update " _ $name _ " on server " _ $server );
+            copy-of $scriptPUTResults _ "\n\n";
+        }
+
+    } else if ($scriptSearchResults/headers/code == "204") {
+        /* script needs to be added */
+        var $scriptPOST := {
+            <method> "post";
+            <insecure>;
+            <url> "https://" _ $server _ "/api/space/script-management/scripts";
+            <header name="Cookie"> "JSESSIONID=" _ $JSESSIONID _ ";Path=/;";
+            <header name="Cookie"> "JSESSIONIDSSO=" _ $JSESSIONIDSSO _ ";Path=/;";
+            <content-type> "application/vnd.net.juniper.space.script-management.script+xml;version=1;charset=UTF-8";
+            <contents> {
+                <script> {
+                    <scriptName> $name;
+                    <scriptContents> $payload;
+                }
+            }
+            <format> "xml";
+        }
+        var $scriptPOSTResults = curl:perform( $curl , $scriptPOST );
+        if ($scriptPOSTResults/headers/code == "200") {
+            expr jcs:output( "\t\t" _ $name _ " added to " _ $server );
+        } else  {
+            expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
+            copy-of $scriptPOSTResults _ "\n";
+        }
+    } else {
+        /* we have a problem */
+        expr jcs:output( "\tWe have a problem..." );
+        copy-of $scriptSearchResults;
+    }
+    expr curl:close($curl);
+}
