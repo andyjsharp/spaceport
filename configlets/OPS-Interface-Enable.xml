@@ -15,7 +15,7 @@
 <cli-configlet-page>
 <page-number>1</page-number>
 <!-- mandatory --><cli-text>## $INTERFACE is an array when called via GUI but scalar when called via NBI
-## Convert to an array when not called via GUI
+## Convert to an array when not called via GUI.
 ## To support multiple interfaces via the NBI, use the format ge-1/0/0;ge-1/0/1;ge-1/0/2;...
 #if ( !$CONTEXT )
 #set ( $INTERFACE = $INTERFACE.split(";") )
