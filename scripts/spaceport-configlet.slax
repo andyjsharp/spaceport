@@ -41,7 +41,7 @@ var $authorization = "Basic " _ slax:base64-encode($user _ ":" _ $password);  /*
 var $curl = curl:open();
 
 match / {
-    expr jcs:output( "\Configlet:\t" _ $name );
+    expr jcs:output( "\tConfiglet:\t" _ $name );
     expr jcs:output( "\tLocation:\t" _ $configlet );
 
     var $payload = slax:document($configlet);
