@@ -1,0 +1,88 @@
+<configuration-view>
+	<name>Log. Interfaces</name>
+	<title>Logical Interfaces View</title>
+	<device-family>ACX/J/M/MX/T/TX/PTX/EX92xx</device-family>
+	<context>/device</context>
+	<description>Grid view of logical interfaces.</description>
+	<order>2</order>
+	<view-type>Grid View</view-type>
+	<configuration-view-params>
+		<configuration-view-param>
+			<parameter>Device_Name</parameter>
+			<display-name>Device Name</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device/name/text()</configured-value-xpath>
+			<order>1</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Physical_Interface_Name</parameter>
+			<display-name>Physical Interface Name</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[(unit) and (starts-with(name,'xe-') or starts-with(name,'ge-'))]/name/text()</configured-value-xpath>
+			<order>2</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Unit</parameter>
+			<display-name>Unit</display-name>
+			<index-parameter>true</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[name='$Physical_Interface_Name']/unit/name/text()</configured-value-xpath>
+			<order>3</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>IP_Address</parameter>
+			<display-name>IP Address</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[name='$Physical_Interface_Name']/unit[name='$Unit']/family/inet/address/name/text()</configured-value-xpath>
+			<order>4</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Description</parameter>
+			<display-name>Description</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[name='$Physical_Interface_Name']/unit[name='$Unit']/description/text()</configured-value-xpath>
+			<order>5</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>Encapsulation</parameter>
+			<display-name>Encapsulation</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>false</script-dependant>
+			<local-script-name></local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/device[name='$Device_Name']/configuration/interfaces/interface[name='$Physical_Interface_Name']/unit[name='$Unit']/encapsulation/text()</configured-value-xpath>
+			<order>6</order>
+		</configuration-view-param>
+		<configuration-view-param>
+			<parameter>VLAN_Id</parameter>
+			<display-name>Vlan</display-name>
+			<index-parameter>false</index-parameter>
+			<script-dependant>true</script-dependant>
+			<local-script-name>cv-grid-physical.slax</local-script-name>
+			<customized>false</customized>
+			<editable>false</editable>
+			<configured-value-xpath>/op-script-results/output/interface[name='$Physical_Interface_Name']/unit[name='$Unit']/vlan-id/text()</configured-value-xpath>
+			<order>7</order>
+		</configuration-view-param>
+	</configuration-view-params>
+</configuration-view>
