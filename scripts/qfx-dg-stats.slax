@@ -1,0 +1,440 @@
+/*
+ *  show fabric administration inventory director-group status
+ *
+ *  design idea :  graphics at the top of the report for quick 
+ *  visibility of status.  Tables of data afterwards.
+ *  
+ *  Per Director:- 
+ *    cluster details
+ *    member details 
+ *    master services
+ *    dg managed services
+ *    hard drive status
+ *    hard drive usage
+ *    dg processes
+ *    interface link status
+ *  
+*/
+
+version 1.1;
+
+/* Namespace declarations */
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns exsl extension = "http://exslt.org/common";
+ns str = "http://exslt.org/strings";
+ns jspace = "http://jspace-utils/asharp@juniper.net";
+ns func extension = "http://exslt.org/functions";
+ns jppc = "http://xml.juniper.net/jppc";
+
+/* Imports */
+import "../import/junos.xsl";
+
+
+/* Junos Space specific context, name and description */
+/* @CONTEXT = "/device" */
+/* @NAME = "QFX DG Stats v2" */
+/* @DESCRIPTION = "QFX Director Group Status v2" */
+/* @ISLOCAL = "true" */
+/* @EXECUTIONTYPE = "GROUPEDEXECUTION" */
+/* @PASSDEVICECREDENTIALS = "true" */
+/* @PROMOTE = "Yes" */
+
+/* Global variables */
+
+
+var $myData;
+
+var $arguments = {
+  <argument> {
+    <name> "CONTEXT";
+    <description> "The context associated with this script.";
+  }
+}
+param $CONTEXT;
+
+match / {
+  <op-script-results> {
+
+    var $devices = jspace:credentials();
+    if ($devices) {
+      <output> {
+        <html> {
+          <head> {
+            uexpr '<script type="text/javascript" src="https://www.google.com/jsapi"></script>';
+            <style type="text/css"> {
+              expr "body { font-family: Verdana, Georgia, Arial, sans-serif;font-size: 12px;color:#000;border-style: solid;border-color: transparent;background-color: transparent}";
+              expr "p { font-family: Verdana, Georgia, Arial, sans-serif;font-size: 12px;color:#000;}";
+              expr "#celltitle { font-weight: bolder }";
+              expr "#cellwarningleft { text-align: left; background-color: #ff0000; color: #fff; font-weight: bolder;}";
+              expr "#cellwarning { text-align: center; background-color: #ff0000; color: #fff; font-weight: bolder; }";
+              expr "#cellgood { text-align: center; background-color: #01DF01; color: #fff; font-weight: bolder; }";
+              expr "#cellamberleft { text-align: left; background-color: #f87431; color: #fff; font-weight: bolder; }";
+              expr "#cellamber { text-align: center; background-color: #f87431; color: #fff; font-weight: bolder; }";
+              expr ".center {text-align: center}";
+              expr ".left {text-align: left}";
+              expr "#pheader { font-weight: bolder; background-color: #7592A9; color: #fff }";
+              expr "#pheadererror { font-size: 14px; font-weight: bolder; background-color: #7592A9; color: #fff }";
+            }
+            <body> {
+              for-each( $devices/device) {
+                sort host;
+                var $user = user;
+                var $passwd = passwd;
+                var $target = target;
+                var $host = host;
+                var $session := {
+                  <username> $user;
+                  <passphrase> $passwd;
+                  <method> "netconf";
+                  <port> "22";
+                }
+
+                var $local = jcs:open($target,$session);
+
+                var $rpc = <get-director-group-status> {
+                }
+                var $results = jcs:execute($local,$rpc);
+                expr jcs:close($local);
+                
+
+                /* CLUSTER-DETAILS */
+                <p style="font-weight: bolder"> {
+                  expr $host _ " - Director Group Status - " _ $results/cluster-details/time;
+                }
+                var $cluster-detailsCSS = "
+                  {'headerRow': '',
+                  'tableRow': '',
+                  'oddTableRow': '',
+                  'selectedTableRow': '',
+                  'hoverTableRow': '',
+                  'headerCell': '',
+                  'tableCell': 'center',
+                  'rowNumberCell': ''}
+                ";
+                var $cluster-detailsData = {
+                  expr "['Member','Status','Role','Mgmt Address','CPU','Free Memory','VMs','Up Time']";
+                  for-each ($results/cluster-details/member-summary) {
+                    <xsl:sort select="name">;
+                    /* create link except when offline */
+                    if (status != "offline") {
+                      expr ",['<a href=\"#";
+                      expr name _ $host;
+                      expr "\">" _ name;
+                      expr "</a>',";
+                    } else {
+                      expr ",['" _ name _ "',";
+                    }
+                    expr "'" _ status _ "',";
+                    expr "'" _ role _ "',";
+                    expr "'" _ mgmt-address _ "',";
+                    expr "'" _ cpu _ "',";
+                    expr "'" _ free-memory _ "',";
+                    expr "'" _ vms _ "',";
+                    expr "'" _ up-time _ "']";
+                  }
+                }
+                <div> {
+                  copy-of jspace:drawchart($cluster-detailsData,"allowHtml: true","cluster-details" _ $host,"","table","Table",$cluster-detailsCSS,"");
+                }
+
+                /* MEMBER DETAILS - per DG */
+                for-each ($results/member-details) {
+                  sort name;
+                  /* create an anchor tag */
+                  uexpr '<a name="' _ name _ $host _ '"></a>';
+                  <p style="font-weight: bolder"> {
+                    expr "Member Details - " _ name;
+                  }
+                  var $member-detailsCSS = "
+                    {'headerRow': '',
+                    'tableRow': '',
+                    'oddTableRow': '',
+                    'selectedTableRow': '',
+                    'hoverTableRow': '',
+                    'headerCell': '',
+                    'tableCell': 'center',
+                    'rowNumberCell': ''}
+                  ";
+
+                  var $member-detailsData = {
+                    expr "['Member','Device Id/Alias','Status','Role']";
+                    expr ",['" _ name _ "',";
+                    expr "'" _ alias _ "',";
+                    expr "'" _ status _ "',";
+                    expr "'" _ role _ "']";
+                  }
+                  <div> {
+                    copy-of jspace:drawchart($member-detailsData,"allowHtml: true","member-details" _ name _ $host,"","table","Table",$member-detailsCSS,"");
+                  }
+                  <p>;
+                  var $master-servicesCSS = "
+                    {'headerRow': '',
+                    'tableRow': '',
+                    'oddTableRow': '',
+                    'selectedTableRow': '',
+                    'hoverTableRow': '',
+                    'headerCell': '',
+                    'tableCell': 'center',
+                    'rowNumberCell': ''}
+                  ";
+
+                  if (master-services-status/entry) {
+                  /* MASTER SERVICES */
+                    var $master-servicesData = {
+                      expr "['Master Services','Status']";
+                      for-each (master-services-status/entry) {
+                        expr ",['" _ name _ "',";
+                        expr "'" _ status _ "']";
+                      }
+                    }
+                    <div> {
+                      copy-of jspace:drawchart($master-servicesData,"sort: 'disable',allowHtml: true","master-services" _ name _ $host,"","table","Table",$master-servicesCSS,"");
+                    }
+                    <p>;
+                  }
+
+
+                  if (cluster-managed-services-status/entry) {
+                    var $dg-managed-statusData = {
+                      expr "['Director Group Managed Services','Status']";
+                      for-each (cluster-managed-services-status/entry) {
+                        expr ",['" _ name _ "',";
+                        expr "'" _ status _ "']";
+
+                      }
+                    }
+                    <div> {
+                      copy-of jspace:drawchart($dg-managed-statusData,"allowHtml: true","dg-managed-status" _ name _ $host ,"","table","Table",$member-detailsCSS,"");
+                    }
+                    <p>;
+                  }
+
+
+                  if (hard-disk-status/partition-entry) {
+                    var $hd-statusData = {
+                      expr "['Hard Drive Status','Status']";
+                      for-each (hard-disk-status/partition-entry) {
+                        expr ",['" _ partition-name _ "',";
+                        expr "'" _ partition-status _ "']";
+
+                      }
+                    }
+                    <div> {
+                      copy-of jspace:drawchart($hd-statusData,"allowHtml: true","hd-status" _ name _ $host ,"","table","Table",$member-detailsCSS,"");
+                    }
+                    <p>;
+                  }
+
+
+                  if (hard-disk-usage-status/hard-disk-usage-entry) {
+                    var $hd-usageData = {
+                      expr "['Size','Used','Avail','Used %','Mounted on']";
+                      for-each (hard-disk-usage-status/hard-disk-usage-entry) {
+                        expr ",['" _ total-space _ "',";
+                        expr "'" _ used-space _ "',";
+                        expr "'" _ free-space _ "',";
+                        expr "'" _ used-percent _ "',";
+                        expr "'" _ mounted-on _ "']";
+                      }
+                    }
+                    <div> {
+                      copy-of jspace:drawchart($hd-usageData,"allowHtml: true","hd-usage" _ name _ $host ,"","table","Table",$member-detailsCSS,"");
+                    }
+                    <p>;
+                  }
+
+                  if (director-group-processes-status/entry) {
+                    var $dg-processes-statusData = {
+                      expr "['Director Group Processes','Status']";
+                      for-each (director-group-processes-status/entry) {
+                        sort name;
+                        expr ",['" _ name _ "',";
+                        expr "'" _ status _ "']";
+
+                      }
+                    }
+                    <div> {
+                      copy-of jspace:drawchart($dg-processes-statusData,"allowHtml: true","dg-process-details" _ name _ $host ,"","table","Table",$member-detailsCSS,"");
+                    }
+                    <p>;
+                  }
+
+                  if (interface-link-status/entry) {
+                    var $ilink-statusData = {
+                      expr "['Interface Link Status','Status','Role']";
+                      for-each (interface-link-status/entry) {
+                        expr ",['" _ name _ "',";
+                        expr "'" _ status _ "',";
+                        if (role) {
+                          expr "'" _ role _ "']";
+                        } else {
+                          expr "null]";
+                        }
+
+                      }
+                    }
+                    <div> {
+                      copy-of jspace:drawchart($ilink-statusData,"allowHtml: true","ilink-status" _ name _ $host,"","table","Table",$member-detailsCSS,"");
+                    }
+                    <p>;
+                  }
+
+                }
+
+                /* create data for guage */
+    /*
+                var $myData = {
+                  expr "['Member','Value'],";
+                  for-each ($results/cluster-details/member-summary) {
+                    if (cpu != "N/A") {
+                      expr "['" _ name _ " CPU'," _ substring-before(cpu,"%") _ "]";
+                    } else {
+                      expr "['" _ name _ " CPU',null]";
+                    }
+                    if ( position() != last() ) {
+                      expr ',';
+                    }
+                  }
+                }
+                var $options = "width: 400, height: 300,redFrom: 90, redTo: 100,yellowFrom:75, yellowTo: 90,minorTicks: 5";
+                var $summaryStyle = "width: 100%; height: 90%;";
+                var $summaryCSS = "
+                  {'headerRow': '',
+                  'tableRow': '',
+                  'oddTableRow': '',
+                  'selectedTableRow': '',
+                  'hoverTableRow': '',
+                  'headerCell': '',
+                  'tableCell': 'center',
+                  'rowNumberCell': ''}
+                ";
+
+                <div> {
+                  copy-of jspace:drawchart($myData,$options,"cpu-chart",$summaryStyle,"gauge","Gauge",$summaryCSS,"");
+                }
+    */
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* draw googlechart */
+/* a function to draw a chart with the required parameters */
+<func:function name="jspace:drawchart">
+{
+  param $data;      /* chart data           */
+  param $options;   /* chart options        */
+  param $id;        /* div id               */
+  param $style;     /* div style            */
+  param $packages;  /* google chart package */
+  param $type;      /* google chart type    */
+  param $css;       /* css style sheet      */
+  param $formatter; /* formatter code       */
+
+  var $html = '<div id="' _ $id _ '" style="' _ $style _ '">';
+  var $jscript = {
+    uexpr '<script type="text/javascript" src="https://www.google.com/jsapi"></script>';
+    <script type="text/javascript"> {
+      uexpr 'google.load("visualization", "1", {packages:["' _ $packages _ '"]});';
+      uexpr 'google.setOnLoadCallback(drawChart);';
+      uexpr 'function drawChart() {';
+      uexpr "  var data = google.visualization.arrayToDataTable([";
+      uexpr $data;
+      uexpr "  ]);";
+
+      uexpr "var cssClassNames = ";
+      uexpr $css;
+      uexpr ";";
+      uexpr "  var options = {";
+      uexpr $options;
+      uexpr " ,'allowHtml': true, 'cssClassNames': cssClassNames };";
+      uexpr "  var chart = new google.visualization." _ $type _ "(document.getElementById('" _ $id _ "'));";
+      if ($formatter != "") {
+        copy-of $formatter;
+      }
+      uexpr "  chart.draw(data, options);";
+      uexpr "}";
+    }
+  }
+  var $draw = {
+    <script type="text/javascript"> {
+      uexpr "var iframe = document.createElement('iframe');";
+      uexpr "var html = '<head>";
+      copy-of $jscript;
+      uexpr "</head><body>" _ $html _ "</body>';";
+      uexpr "iframe.src = 'data:text/html;charset=utf-8,' + encodeURI(html);";
+      uexpr "document.body.appendChild(iframe);";
+      uexpr "console.log('iframe.contentWindow =', iframe.contentWindow);";
+    }
+  }
+  <func:result select=" $draw ">;
+}
+
+/* ---------------------------------------------------- */
+/* this function is used to try netconf as a protocol   */
+/* if the session didn't work the first time            */
+/* ---------------------------------------------------- */
+<func:function name="jppc:open-session">
+{
+  param $target;
+  param $login;
+  param $pwd;
+
+  var $session-opt-default := {
+    <username> $login;
+    <password> $pwd;
+    <port> "22";
+  }
+
+  var $session-opt-netconf := {
+    <method> "netconf";
+    <username> $login;
+    <password> $pwd;
+    <port> "22";
+  }
+
+  var $jnx-default = jcs:open( $target, $session-opt-default );
+
+  if(not( $jnx-default )) {
+    var $jnx-netconf = jcs:open( $target, $session-opt-netconf );
+    <func:result select="$jnx-netconf">;
+  } else {
+    <func:result select="$jnx-default">;
+  }
+}
+
+<func:function name="jspace:credentials"> {
+  if( $CONTEXT ) {
+    var $splitCredentials = str:split( $credentials, "\\;" );
+    var $targets := {
+      for-each ( $splitCredentials ) {
+        var $splitCredential = str:split( ., "\\:" );
+        var $user-target = str:split($splitCredential[1], "\@");
+        var $host = substring-before( substring-after( $deviceipmap, substring-after( $splitCredential[1], "@" ) _ "\":\"" ), "\"" );
+        <device> {
+          <target> {
+            expr $user-target[2];
+          }
+          <user> {
+            expr $user-target[1];
+          }
+          <passwd> {
+            expr $splitCredential[2];
+          }
+          <host> {
+            expr $host;
+          }
+        }
+      }
+    }
+    <func:result select="$targets">;
+  } else {
+    <func:result select="false()">;
+  }
+}
