@@ -1,0 +1,149 @@
+version 1.2;
+ns junos = "http://xml.juniper.net/junos/*/junos";
+ns xnm = "http://xml.juniper.net/xnm/1.1/xnm";
+ns jcs = "http://xml.juniper.net/junos/commit-scripts/1.0";
+ns exsl extension = "http://exslt.org/common";
+ns str = "http://exslt.org/strings";
+ns func extension = "http://exslt.org/functions";
+ns jspace = "http://jspace-utils/asharp@juniper.net";
+
+import "../import/junos.xsl";
+
+/* @ISLOCAL = "true" */
+/* @NAME = "Configuration Backup" */
+/* @DESCRIPTION = "Configuration Backup" */
+/* @EXECUTIONTYPE = "GROUPEDEXECUTION" */
+/* @PASSDEVICECREDENTIALS = "true" */
+
+var $conn;
+var $filename = "req-cfg-backup";
+var $COMMAND = "request system software configuration-backup " _ "/home/" _ $filename;
+
+var $debug = false();
+
+
+match / {
+  <op-script-results> {
+    <output> {
+      <html> {
+        <head> {
+          <style type="text/css"> {
+            expr "body { font-family: Verdana, Georgia, Arial, sans-serif;font-size: 12px;color:#000;border-style: solid;border-color: transparent;background-color: transparent}";
+            expr "p { font-family: Verdana, Georgia, Arial, sans-serif;font-size: 12px;color:#000;}";
+            expr ".center {text-align: center}";
+            expr ".left {text-align: left}";
+            expr "#configlines { font: 100%/1.5 Courier; font-family: \"Courier New\", Courier, monospace; white-space: pre-wrap; text-align: left; background-image: -webkit-linear-gradient(aliceblue 50%, white 50%); background-image: linear-gradient(aliceblue 50%, white 50%); background-size: 100% 3em; margin: 0 auto; width: 100%; word-wrap: break-word; }";
+          }
+        }
+        <body> {
+          var $devices = jspace:credentials();
+          if ($devices) {
+            for-each( $devices/device) {
+              <div style="width: 100%"> {
+                /* shell */
+                var $user = user;
+                var $passwd = passwd;
+                var $target = target;
+                var $host = host;
+
+                var $conn_info := {
+                  <username> $user;
+                  <passphrase> $passwd;
+                  <method> "shell";
+                  <header-timeout> 1;
+                }
+                var $conn = jcs:open( $target, $conn_info);
+                if (not($conn)) {
+                  <xsl:message terminate="yes"> "Connection failed";
+                }
+
+                /* send command to session */
+                expr jcs:send($conn, $COMMAND _ "\n");
+                /* exit from the session */
+                expr jcs:send($conn, "exit\n");
+
+                /* display session data */
+                if ($debug) {
+                  <p id="configlines"> {
+                    uexpr "--------" _ $host _ " Session Results--------";
+                    mvar $data = jcs:receive($conn);
+                    while ($data[2]) {
+                      if ($data != "") {
+                        uexpr $data _ "<br>";
+                      }
+                      set $data = jcs:receive($conn, 5);
+                    }
+                    expr jcs:close($conn);
+                  }
+                } else {
+                  mvar $data = jcs:receive($conn);
+                  while ($data[2]) {
+                    set $data = jcs:receive($conn, 5);
+                  }
+                }
+
+                var $session := {
+                  <username> $user;
+                  <passphrase> $passwd;
+                  <method> "netconf";
+                  <port> "22";
+                }
+                var $local = jcs:open($target,$session);
+
+                <p> {
+                  var $file = <file-get> {
+                    <filename> "/home/" _ $filename;
+                    <encoding> "ascii";
+                  }
+                  var $file-results = jcs:execute($local,$file);
+                  /* Save the file locally on Space */
+                  var $savefile = "/var/tmp/" _ $target _ "-" _ $filename;
+                  <exsl:document method="text" omit-xml-declaration="yes" href=$savefile> {
+                    copy-of $file-results/file-contents;
+                  }
+                  uexpr host _ " Backup saved in Junos Space location : " _ $savefile _ "<br>";
+                  uexpr host _ " Backup File Contents<br>";
+                  <p id="configlines"> {
+                    copy-of $file-results/file-contents;
+                  }
+                  expr jcs:close($local);
+                }
+
+              } /* div */
+            } /* for each device */
+          } /* if devices  */
+        } /* body */
+      } /* html */
+    }
+  }
+}
+
+<func:function name="jspace:credentials"> {
+  if( $CONTEXT ) {
+    var $splitCredentials = str:split( $credentials, "\\;" );
+    var $targets := {
+      for-each ( $splitCredentials ) {
+        var $splitCredential = str:split( ., "\\:" );
+        var $user-target = str:split($splitCredential[1], "\@");
+        var $host = substring-before( substring-after( $deviceipmap, substring-after( $splitCredential[1], "@" ) _ "\":\"" ), "\"" );
+        <device> {
+          <target> {
+            expr $user-target[2];
+          }
+          <user> {
+            expr $user-target[1];
+          }
+          <passwd> {
+            expr $splitCredential[2];
+          }
+          <host> {
+            expr $host;
+          }
+        }
+      }
+    }
+    <func:result select="$targets">;
+  } else {
+    <func:result select="false()">;
+  }
+}
