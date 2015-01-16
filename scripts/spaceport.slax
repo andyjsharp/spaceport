@@ -171,6 +171,10 @@ match / {
             expr jcs:output( "\tStatus:\t\t" _ $name _ " hasn't changed on " _ $server _ ", no update required." );
             expr jcs:output();
             expr jcs:output();
+        } else if ($scriptPUTResults/headers/code == '500' && $scriptPUTResults/raw-data == 'Display name of script with @PROMOTE="yes" annotation already exists in another promotable script.') {
+            expr jcs:output( "\tStatus:\t\t" _ $name _ " could not be installed on " _ $server _ ", another PROMOTED script with the same display name exists." );
+            expr jcs:output();
+            expr jcs:output();
         } else {
             expr jcs:output( "\tERROR:\t\tUnable to update " _ $name _ " on server " _ $server );
             copy-of $scriptPUTResults _ "\n\n";
@@ -194,7 +198,7 @@ match / {
         }
         var $scriptPOSTResults = curl:perform( $curl , $scriptPOST );
         if ($scriptPOSTResults/headers/code == "200") {
-            expr jcs:output( "\t\t" _ $name _ " added to " _ $server );
+            expr jcs:output( "\tStatus:\t\t" _ $name _ " added to " _ $server );
         } else  {
             expr jcs:output( "\t\tERROR: Unable to add " _ $name _ " to server " _ $server );
             copy-of $scriptPOSTResults _ "\n";
